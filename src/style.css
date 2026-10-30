@@ -517,3 +517,10 @@ input:focus { border-color: var(--accent); }
 @media (max-width: 560px) {
   .stat-grid { grid-template-columns: repeat(2, 1fr); }
 }
+
+/* narrow desktop windows: keep the compass and help text clear of the panels */
+@media (max-width: 900px) {
+  .compass { top: calc(92px + var(--safe-t)); width: min(380px, 70vw); }
+  .toasts { top: calc(140px + var(--safe-t)); }
+  .help { max-width: calc(100vw - 230px); }
+}
