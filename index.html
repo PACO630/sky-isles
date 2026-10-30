@@ -7,7 +7,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
     <title>雲海群島 Sky Isles</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✦</text></svg>" />
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M12 2.5 18.5 10 12 21.5 5.5 10Z' fill='%23ffd98a'/></svg>" />
     <link rel="stylesheet" href="./src/style.css" />
   </head>
   <body>
@@ -15,7 +15,7 @@
 
     <div id="title" class="screen">
       <div class="card">
-        <div class="logo">✦</div>
+        <div class="logo" data-icon="shard"></div>
         <h1>雲海群島</h1>
         <p class="sub">Sky Isles · 和朋友一起漫遊雲端之上的無盡群島</p>
 
@@ -33,7 +33,7 @@
           <span>世界代碼 <small>（相同代碼＝同一個世界，可多人一起玩）</small></span>
           <div class="row">
             <input id="world" maxlength="24" autocomplete="off" spellcheck="false" />
-            <button id="newWorld" class="ghost" type="button" title="產生新世界">🎲</button>
+            <button id="newWorld" class="ghost" type="button" title="產生新世界" data-icon="dice"></button>
           </div>
         </label>
 
@@ -44,10 +44,10 @@
 
     <div id="hud" class="hidden">
       <div class="panel stats">
-        <span title="星光碎片">✦ <b id="sShards">0</b></span>
-        <span title="已發現島嶼">⛰ <b id="sIslands">0</b></span>
-        <span title="已點亮祭壇">☀ <b id="sAltars">0</b></span>
-        <button id="journalBtn" class="mini" type="button" title="旅人日誌 (J)">📖</button>
+        <span class="stat-shard" title="星光碎片"><i data-icon="shard"></i><b id="sShards">0</b></span>
+        <span class="stat-island" title="已發現島嶼"><i data-icon="island"></i><b id="sIslands">0</b></span>
+        <span class="stat-altar" title="已點亮祭壇"><i data-icon="altar"></i><b id="sAltars">0</b></span>
+        <button id="journalBtn" class="mini" type="button" title="旅人日誌 (J)" data-icon="book"></button>
       </div>
       <div id="compass" class="compass"><div id="compassStrip" class="compass-strip"></div><div class="compass-tick"></div></div>
       <div class="panel room">
@@ -67,7 +67,7 @@
       <div id="prompt" class="prompt hidden"></div>
       <div id="help" class="help"></div>
       <div id="emotes" class="emotes">
-        <button id="emoteToggle" class="emote-toggle" type="button">😊</button>
+        <button id="emoteToggle" class="emote-toggle" type="button" aria-label="表情" data-icon="smile"></button>
         <div id="emoteRow" class="emote-row"></div>
       </div>
     </div>
@@ -81,8 +81,14 @@
 
     <div id="touch" class="hidden">
       <div id="joyBase" class="joy-base"><div id="joyKnob" class="joy-knob"></div></div>
-      <button id="btnInteract" class="tbtn interact" type="button">互動</button>
-      <button id="btnJump" class="tbtn jump" type="button">跳躍<small>按住滑翔</small></button>
+      <button id="btnInteract" class="tbtn interact" type="button" aria-label="互動" data-icon="touch"></button>
+      <button id="btnJump" class="tbtn jump" type="button" aria-label="跳躍（空中按住滑翔）" data-icon="jump"></button>
+    </div>
+
+    <div id="rotate" class="rotate">
+      <div class="rotate-phone" data-icon="rotate"></div>
+      <p>請將手機轉為橫向</p>
+      <small>雲海群島需要橫向遊玩</small>
     </div>
 
     <div id="fade" class="fade"></div>

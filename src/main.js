@@ -8,6 +8,7 @@ import { connect } from './net.js';
 import { loadProfile, saveProfile, loadWorld, saveWorld } from './save.js';
 import { initAudio, SFX } from './audio.js';
 import { clamp } from './rng.js';
+import { iconSvg } from './icons.js';
 
 const $ = (id) => document.getElementById(id);
 const ALTAR_COST = 3;
@@ -22,6 +23,20 @@ const input = new Input(canvas, {
   knob: $('joyKnob'),
 });
 const isTouch = input.isTouch;
+for (const node of document.querySelectorAll('[data-icon]')) node.innerHTML = iconSvg(node.dataset.icon);
+if (isTouch) document.body.classList.add('is-touch');
+const portrait = matchMedia('(orientation: portrait)');
+
+// Phones play in landscape. Android can lock it from fullscreen; iOS can't, so the
+// CSS overlay asks the player to turn the phone instead.
+async function goLandscape() {
+  try {
+    if (!document.fullscreenElement && document.documentElement.requestFullscreen) await document.documentElement.requestFullscreen({ navigationUI: 'hide' });
+    if (screen.orientation && screen.orientation.lock) await screen.orientation.lock('landscape');
+  } catch {
+    // not supported (iOS Safari, desktop): the rotate overlay handles it
+  }
+}
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: !isTouch, powerPreference: 'high-performance' });
 const pixelRatio = Math.min(window.devicePixelRatio || 1, isTouch ? 1.5 : 2);
 renderer.setPixelRatio(pixelRatio);
@@ -113,6 +128,7 @@ $('start').addEventListener('click', () => {
   if (isTouch) {
     $('touch').classList.remove('hidden');
     document.body.classList.add('touch-ui');
+    goLandscape();
   }
   game = new Game(cfg);
   if (import.meta.env.DEV) window.__game = game;
@@ -172,7 +188,8 @@ class Game {
       const b = document.createElement('button');
       b.type = 'button';
       b.title = e.name;
-      b.innerHTML = `${e.icon}<kbd>${i + 1}</kbd>`;
+      b.innerHTML = `${iconSvg(e.icon)}<kbd>${i + 1}</kbd>`;
+      b.style.color = e.color;
       b.addEventListener('click', () => {
         this.doEmote(i);
         $('emotes').classList.remove('open');
@@ -222,7 +239,7 @@ class Game {
 
     this.updateHud();
     this.updatePeerCount();
-    toast(this.save.visited.size ? '歡迎回來，旅人' : '收集 3 片星光碎片 ✦，點亮島上的古老祭壇');
+    toast(this.save.visited.size ? '歡迎回來，旅人' : '收集 3 片星光碎片，點亮島上的古老祭壇');
   }
 
   persist() {
@@ -561,13 +578,13 @@ class Game {
       .sort((x, y) => x.d - y.d)
       .slice(0, 6);
     for (const { a, d } of altars) {
-      if (d > 6) add(a.altar.x - pos.x, a.altar.z - pos.z, `<span style="color:#ffd98a">☀</span><small>${fmtDist(d)}</small>`);
+      if (d > 6) add(a.altar.x - pos.x, a.altar.z - pos.z, `<span style="color:#ffd98a">${ICON.altar}</span><small>${fmtDist(d)}</small>`);
     }
     const home = this.world.spawnPoint();
     const hd = Math.hypot(home.x - pos.x, home.z - pos.z);
-    if (hd > 60) add(home.x - pos.x, home.z - pos.z, `⌂<small>${fmtDist(hd)}</small>`);
-    for (const s of this.stars.landed) add(s.pos.x - pos.x, s.pos.z - pos.z, `<span style="color:#9fd0ff">✦</span><small>${fmtDist(Math.hypot(s.pos.x - pos.x, s.pos.z - pos.z))}</small>`);
-    for (const p of this.pings) add(p.pos.x - pos.x, p.pos.z - pos.z, `📍<small>${fmtDist(Math.hypot(p.pos.x - pos.x, p.pos.z - pos.z))}</small>`);
+    if (hd > 60) add(home.x - pos.x, home.z - pos.z, `${ICON.home}<small>${fmtDist(hd)}</small>`);
+    for (const s of this.stars.landed) add(s.pos.x - pos.x, s.pos.z - pos.z, `<span style="color:#9fd0ff">${ICON.sparkle}</span><small>${fmtDist(Math.hypot(s.pos.x - pos.x, s.pos.z - pos.z))}</small>`);
+    for (const p of this.pings) add(p.pos.x - pos.x, p.pos.z - pos.z, `<span style="color:${p.color}">${ICON.ping}</span><small>${fmtDist(Math.hypot(p.pos.x - pos.x, p.pos.z - pos.z))}</small>`);
     for (const p of this.peers.values()) {
       if (!p.hasPos) continue;
       const d = Math.hypot(p.pos.x - pos.x, p.pos.z - pos.z);
@@ -578,18 +595,18 @@ class Game {
 
   updatePrompt(altar) {
     const el = $('prompt');
-    const key = isTouch ? '點「互動」' : '按 E ';
+    const key = isTouch ? '點互動鈕' : '按 E ';
     let text = '';
     if (altar) {
       if (this.save.lit.has(altar.id)) text = `${key}聆聽祭壇的低語`;
-      else if (this.save.shards >= ALTAR_COST) text = `${key}點亮祭壇（消耗 ${ALTAR_COST} ✦）`;
-      else text = `沉睡的祭壇 · 需要 ${ALTAR_COST} ✦（你有 ${this.save.shards}）`;
+      else if (this.save.shards >= ALTAR_COST) text = `${key}點亮祭壇（消耗 ${ALTAR_COST} 片碎片）`;
+      else text = `沉睡的祭壇 · 需要 ${ALTAR_COST} 片碎片（你有 ${this.save.shards} 片）`;
     }
     if (text !== this._prompt) {
       this._prompt = text;
       el.textContent = text;
       el.classList.toggle('hidden', !text);
-      $('btnInteract').classList.toggle('ready', !!altar);
+      $('btnInteract').classList.toggle('show', !!altar);
     }
   }
 
@@ -670,7 +687,7 @@ class Game {
 
     const landed = this.stars.update(dt, pl.pos, sky.night);
     if (landed) {
-      toast('一顆流星墜落在附近的島上！跟著指南針上的 ✦ 去找它');
+      toast('一顆流星墜落在附近的島上！跟著指南針上的藍色星光去找它');
       SFX.whoosh();
     }
     const caught = this.stars.catchNear(pl.pos);
@@ -725,6 +742,7 @@ const _v = new THREE.Vector3();
 const _v2 = new THREE.Vector3();
 const _up = new THREE.Vector3(0, 1.5, 0);
 const _ray = new THREE.Raycaster();
+const ICON = Object.fromEntries(['altar', 'home', 'sparkle', 'ping'].map((n) => [n, iconSvg(n)]));
 const PING_BEAM = new THREE.CylinderGeometry(0.3, 0.3, 80, 8, 1, true).translate(0, 40, 0);
 const PING_RING = new THREE.RingGeometry(0.8, 1.1, 24).rotateX(-Math.PI / 2).translate(0, 0.1, 0);
 
@@ -760,6 +778,11 @@ let titleT = 0;
 function frame() {
   requestAnimationFrame(frame);
   const dt = Math.min(clock.getDelta(), 0.05);
+  // phone held upright: the rotate overlay is showing, so pause instead of rendering
+  if (isTouch && portrait.matches) {
+    input.endFrame();
+    return;
+  }
   input.poll();
   if (game) {
     game.update(dt);

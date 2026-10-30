@@ -11,6 +11,7 @@ const _c = new THREE.Color();
 export const CELL = 72;
 const VIEW = 4; // cells streamed around the player (fog hides the edge)
 const TAU = Math.PI * 2;
+const STEP = 0.6; // highest ledge the player walks up without jumping
 
 const hex = (h) => new THREE.Color(h);
 const pal = (arr) => arr.map(hex);
@@ -224,19 +225,42 @@ export class World {
     if (spawn || (r >= 12 && rand() < 0.2)) {
       const a = rand() * TAU, off = spawn ? 0 : rand() * 0.3 * r;
       const ax = isl.x + Math.cos(a) * off, az = isl.z + Math.sin(a) * off;
+      // A level stone plinth that steps down to the surrounding ground, adding tiers
+      // until the lowest one is a single step above the terrain. Uphill it simply
+      // disappears into the slope, so it never floats and never blocks the way.
       const ay = isl.topAt(ax, az);
-      occ.push({ x: ax, z: az, r: 5.6 });
-      isl.altar = { id: isl.key, x: ax, z: az, y: ay, lore: isl.hash % LORE.length, top: ay + 2.1 };
-      isl.decor.push({ t: 'pedestal', x: ax, z: az, y: ay });
-      collider(ax, az, 1.0, ay - 1, ay + 1.25, true);
+      const top = ay + 0.45;
+      const edgeRoom = Math.min(...Array.from({ length: 12 }, (_, k) => isl.edge((k / 12) * TAU))) - off - 0.6;
+      const groundBelow = (rad) => {
+        let lo = Infinity;
+        for (let k = 0; k < 16; k++) {
+          const sa = (k / 16) * TAU;
+          lo = Math.min(lo, isl.topAt(ax + Math.cos(sa) * rad, az + Math.sin(sa) * rad) ?? isl.y);
+        }
+        return lo;
+      };
+      const tiers = [[5.6, 0]];
+      while (tiers.length < 6) {
+        const [rad, drop] = tiers[tiers.length - 1];
+        if (top - drop - groundBelow(rad + 0.9) <= STEP - 0.05 || rad + 0.85 > edgeRoom) break;
+        tiers.push([rad + 0.85, drop + 0.45]);
+      }
+      const outer = tiers[tiers.length - 1][0];
+      const bottom = Math.min(groundBelow(outer), groundBelow(outer * 0.5), ay) - 1.2;
+      occ.push({ x: ax, z: az, r: outer + 0.6 });
+      isl.altar = { id: isl.key, x: ax, z: az, y: top, lore: isl.hash % LORE.length };
+      isl.decor.push({ t: 'plinth', x: ax, z: az, top, bottom, tiers, rot: rand() * TAU });
+      // collider radius is the octagon's inscribed circle, so you never stand on thin air
+      for (const [rad, drop] of tiers) collider(ax, az, rad * 0.92, bottom, top - drop, true);
+      isl.decor.push({ t: 'pedestal', x: ax, z: az, y: top });
+      collider(ax, az, 1.25, top - 1, top + 1.25, true);
       const rot = rand() * TAU;
       for (let k = 0; k < 6; k++) {
         const sa = rot + (k / 6) * TAU;
-        const sx = ax + Math.cos(sa) * 4.3, sz = az + Math.sin(sa) * 4.3;
-        const sy = isl.topAt(sx, sz) ?? ay;
+        const sx = ax + Math.cos(sa) * 4.1, sz = az + Math.sin(sa) * 4.1;
         const h = 2 + rand() * 1.4;
-        isl.decor.push({ t: 'stone', x: sx, z: sz, y: sy, h, rot: -sa });
-        collider(sx, sz, 0.55, sy - 1, sy + h, true);
+        isl.decor.push({ t: 'stone', x: sx, z: sz, y: top, h, rot: -sa });
+        collider(sx, sz, 0.55, top - 1, top + h, true);
       }
     }
 
@@ -422,9 +446,19 @@ export class World {
           terr.add(BASE.octa, mat(d.x, d.y + d.h + 0.1, d.z, 0.18, 0.3, 0.18), GLOW[1]);
           break;
         case 'pedestal':
-          terr.add(BASE.cyl6, mat(d.x, d.y + 0.4, d.z, 1.0, 1.2, 1.0), pick(STONE));
+          terr.add(BASE.cyl6, mat(d.x, d.y + 0.5, d.z, 1.0, 1.0, 1.0), pick(STONE));
           terr.add(BASE.cyl6, mat(d.x, d.y + 1.1, d.z, 1.25, 0.25, 1.25, 0, 0.5), pick(STONE));
-          terr.add(BASE.cyl6, mat(d.x, d.y + 0.02, d.z, 5.4, 0.15, 5.4), _c.copy(STONE[1]).offsetHSL(0, 0, -0.08).clone());
+          break;
+        case 'plinth':
+          d.tiers.forEach(([rad, drop], k) => {
+            const h = d.top - drop - d.bottom;
+            const shade = _c.copy(STONE[1]).offsetHSL(0, 0, -0.06 - k * 0.05).clone();
+            terr.add(BASE.cyl8, mat(d.x, d.bottom + h / 2, d.z, rad, h, rad, 0, d.rot), shade, 0.03);
+          });
+          for (let k = 0; k < 8; k++) {
+            const a = d.rot + (k / 8) * TAU + TAU / 16;
+            glow.add(BASE.octa, mat(d.x + Math.cos(a) * 5.0, d.top + 0.05, d.z + Math.sin(a) * 5.0, 0.16, 0.12, 0.16), GLOW[0], 0);
+          }
           break;
         case 'column': {
           const top = d.y + d.h;
@@ -619,7 +653,8 @@ export class World {
     const isl = this.islandAt(pos.x, pos.z);
     if (!isl) return;
     for (const c of isl.colliders) {
-      if (pos.y >= c.top - 0.1 || pos.y + height <= c.bottom) continue;
+      // anything standable lower than a step can be walked onto instead of blocking
+      if (pos.y >= c.top - (c.stand ? STEP : 0.1) || pos.y + height <= c.bottom) continue;
       const dx = pos.x - c.x, dz = pos.z - c.z;
       const min = c.rad + radius;
       const d2 = dx * dx + dz * dz;

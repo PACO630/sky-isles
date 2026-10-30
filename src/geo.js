@@ -9,6 +9,7 @@ export const BASE = {
   cone5: ni(new THREE.ConeGeometry(1, 1, 5)),
   cyl6: ni(new THREE.CylinderGeometry(1, 1, 1, 6)),
   cyl5: ni(new THREE.CylinderGeometry(1, 1, 1, 5)),
+  cyl8: ni(new THREE.CylinderGeometry(1, 1, 1, 8)),
   ico: ni(new THREE.IcosahedronGeometry(1, 0)),
   dodec: ni(new THREE.DodecahedronGeometry(1, 0)),
   octa: ni(new THREE.OctahedronGeometry(1, 0)),

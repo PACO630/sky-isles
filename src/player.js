@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { clamp } from './rng.js';
+import { drawIcon } from './icons.js';
 
 export const PLAYER_COLORS = ['#7a6cf0', '#ef6f9a', '#3fb8a8', '#f0a24a', '#4a9ff0', '#e8e4f4'];
 
@@ -19,34 +20,43 @@ export const ANIM = { IDLE: 0, WALK: 1, RUN: 2, AIR: 3, GLIDE: 4 };
 
 export const EMOTE = { WAVE: 0, CHEER: 1, HEART: 2, PING: 3 };
 export const EMOTES = [
-  { icon: '👋', name: '揮手' },
-  { icon: '🎉', name: '歡呼' },
-  { icon: '❤️', name: '愛心' },
-  { icon: '📍', name: '這裡！' },
+  { icon: 'wave', name: '揮手', color: '#7a6cf0' },
+  { icon: 'cheer', name: '歡呼', color: '#f0a24a' },
+  { icon: 'heart', name: '愛心', color: '#ef6f9a' },
+  { icon: 'ping', name: '這裡！', color: '#2fa898' },
 ];
 
 const bubbleCache = new Map();
-function bubbleMaterial(icon) {
-  if (!bubbleCache.has(icon)) {
+function bubbleMaterial(type) {
+  if (!bubbleCache.has(type)) {
+    const { icon, color } = EMOTES[type];
     const c = document.createElement('canvas');
     c.width = c.height = 128;
     const g = c.getContext('2d');
-    g.fillStyle = 'rgba(255,255,255,0.92)';
+    // soft speech bubble with a coloured rim, matching the HUD glass panels
+    const bubble = new Path2D();
+    bubble.arc(64, 56, 46, 0, Math.PI * 2);
+    bubble.moveTo(50, 96);
+    bubble.lineTo(64, 120);
+    bubble.lineTo(78, 96);
+    bubble.closePath();
+    g.fillStyle = '#fbf8ff';
+    g.fill(bubble);
+    g.lineWidth = 6;
+    g.strokeStyle = color;
+    g.globalAlpha = 0.55;
+    g.stroke(bubble);
+    g.globalAlpha = 1;
+    g.fillStyle = '#fbf8ff';
     g.beginPath();
-    g.arc(64, 58, 50, 0, Math.PI * 2);
-    g.moveTo(52, 104);
-    g.lineTo(64, 124);
-    g.lineTo(76, 104);
+    g.arc(64, 56, 43, 0, Math.PI * 2);
     g.fill();
-    g.font = '60px "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif';
-    g.textAlign = 'center';
-    g.textBaseline = 'middle';
-    g.fillText(icon, 64, 62);
+    drawIcon(g, icon, 30, 22, 68, color);
     const tex = new THREE.CanvasTexture(c);
     tex.colorSpace = THREE.SRGBColorSpace;
-    bubbleCache.set(icon, new THREE.SpriteMaterial({ map: tex, depthWrite: false, transparent: true }));
+    bubbleCache.set(type, new THREE.SpriteMaterial({ map: tex, depthWrite: false, transparent: true }));
   }
-  return bubbleCache.get(icon);
+  return bubbleCache.get(type);
 }
 
 export function playEmote(avatar, type) {
@@ -59,7 +69,7 @@ export function playEmote(avatar, type) {
     u.bubble.renderOrder = 11;
     avatar.add(u.bubble);
   }
-  u.bubble.material = bubbleMaterial(EMOTES[type].icon);
+  u.bubble.material = bubbleMaterial(type);
   u.bubble.visible = true;
 }
 
