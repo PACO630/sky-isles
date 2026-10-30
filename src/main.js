@@ -109,9 +109,6 @@ for (const c of PLAYER_COLORS) {
   $('swatches').appendChild(b);
 }
 $('newWorld').addEventListener('click', () => ($('world').value = randomCode()));
-$('controlsHint').textContent = isTouch
-  ? '左半邊拖曳移動 · 右半邊拖曳轉視角 · 跳躍鍵在空中按住可以滑翔'
-  : 'WASD 移動 · 空白鍵跳躍，空中按住滑翔 · 拖曳滑鼠轉視角';
 
 $('start').addEventListener('click', () => {
   if (game) return;
@@ -120,7 +117,8 @@ $('start').addEventListener('click', () => {
     color: chosenColor,
     world: cleanCode($('world').value) || randomCode(),
   };
-  saveProfile({ name: cfg.name, color: cfg.color, lastWorld: cfg.world });
+  Object.assign(profile, { name: cfg.name, color: cfg.color, lastWorld: cfg.world });
+  saveProfile(profile);
   history.replaceState(null, '', '#' + encodeURIComponent(cfg.world));
   initAudio();
   $('title').classList.add('hidden');
@@ -175,10 +173,6 @@ class Game {
     this.stars = new StarFall(scene, this.world);
 
     $('roomLabel').textContent = cfg.world;
-    $('help').innerHTML = isTouch
-      ? ''
-      : 'WASD 移動 · Shift 奔跑 · 空白鍵 跳躍（空中按住＝滑翔）· E 互動 · 1–4 表情與標記 · J 日誌<br>拖曳滑鼠轉視角 · 滾輪縮放 · 乘著閃爍的上升氣流，飛向更高的島嶼和雲鯨';
-    setTimeout(() => $('help').classList.add('hidden'), 45000);
 
     $('invite').addEventListener('click', () => this.invite());
     $('journalBtn').addEventListener('click', () => this.openJournal());
@@ -189,7 +183,6 @@ class Game {
       b.type = 'button';
       b.title = e.name;
       b.innerHTML = `${iconSvg(e.icon)}<kbd>${i + 1}</kbd>`;
-      b.style.color = e.color;
       b.addEventListener('click', () => {
         this.doEmote(i);
         $('emotes').classList.remove('open');
@@ -197,10 +190,14 @@ class Game {
       $('emoteRow').appendChild(b);
     });
     $('emoteToggle').addEventListener('click', () => $('emotes').classList.toggle('open'));
-    $('friendsBtn').addEventListener('click', () => {
-      $('friends').classList.toggle('hidden');
-      this.renderFriends();
-    });
+    // the friends panel stays folded into a small button until it's needed
+    const setSocial = (open) => {
+      $('socialPanel').classList.toggle('hidden', !open);
+      $('socialBtn').classList.toggle('on', open);
+      if (open) this.renderFriends();
+    };
+    $('socialBtn').addEventListener('click', () => setSocial($('socialPanel').classList.contains('hidden')));
+    canvas.addEventListener('pointerdown', () => setSocial(false));
 
     this.net = connect(cfg.world, { name: cfg.name, color: cfg.color }, {
       getSync: () => ({ collected: [...this.save.collected], lit: [...this.save.lit] }),
@@ -239,7 +236,13 @@ class Game {
 
     this.updateHud();
     this.updatePeerCount();
-    toast(this.save.visited.size ? '歡迎回來，旅人' : '收集 3 片星光碎片，點亮島上的古老祭壇');
+    if (!profile.tutorialSeen) {
+      this.openTutorial();
+      profile.tutorialSeen = true;
+      saveProfile(profile);
+    } else {
+      toast(this.save.visited.size ? '歡迎回來，旅人' : '收集 3 片星光碎片，點亮島上的古老祭壇');
+    }
   }
 
   persist() {
@@ -254,8 +257,11 @@ class Game {
   }
 
   updatePeerCount() {
-    $('peerCount').textContent = `· ${this.peers.size + 1} 人`;
-    $('netDot').classList.toggle('on', this.peers.size > 0);
+    const n = this.peers.size;
+    $('peerCount').textContent = `${n + 1} 人`;
+    $('netDot').classList.toggle('on', n > 0);
+    $('peerBadge').textContent = n;
+    $('peerBadge').classList.toggle('hidden', n === 0);
   }
 
   async invite() {
@@ -278,7 +284,7 @@ class Game {
 
   renderFriends() {
     const box = $('friends');
-    if (box.classList.contains('hidden')) return;
+    if ($('socialPanel').classList.contains('hidden')) return;
     box.innerHTML = '';
     if (!this.peers.size) {
       const e = document.createElement('div');
@@ -477,6 +483,9 @@ class Game {
 
   openJournal() {
     const s = this.save;
+    const guideBtn = el('button', 'ghost-btn', '操作說明');
+    guideBtn.type = 'button';
+    guideBtn.addEventListener('click', () => this.openTutorial());
     const stats = el('div', 'stat-grid');
     for (const [v, label] of [
       [s.shards, '持有碎片'],
@@ -499,7 +508,53 @@ class Game {
       el('h3', '', `祭壇低語 ${s.lore.size} / ${LORE.length}`),
       lore,
       el('p', 'hint', '在點亮的祭壇前互動，可以聆聽低語。高空中的雲鯨背上也藏著碎片，乘著牠腹下的氣流就能登上去。'),
+      guideBtn,
     );
+  }
+
+  // first-run guide: how to move, and what there is to do
+  openTutorial() {
+    const rows = isTouch
+      ? [
+          [keyCap(null, '左半邊拖曳'), '移動，推到底就會奔跑'],
+          [keyCap(null, '右半邊拖曳'), '轉動視角'],
+          [keyCap('jump', '', true), '跳躍；在空中再按住，展開滑翔翼'],
+          [keyCap('touch', '', true), '靠近祭壇時出現，點一下互動'],
+          [keyCap('smile', '', true), '表情，以及給隊友的「這裡！」標記'],
+          [keyCap('book', '', true), '旅人日誌'],
+        ]
+      : [
+          [keyCap(null, '', false, ['W', 'A', 'S', 'D']), '移動，按住 Shift 奔跑'],
+          [keyCap(null, '', false, ['空白鍵']), '跳躍；在空中再按住，展開滑翔翼'],
+          [keyCap(null, '拖曳滑鼠'), '轉動視角，滾輪縮放'],
+          [keyCap(null, '', false, ['E']), '和祭壇互動'],
+          [keyCap(null, '', false, ['1', '–', '4']), '表情，以及給隊友的「這裡！」標記'],
+          [keyCap(null, '', false, ['J']), '旅人日誌'],
+        ];
+    const guide = el('div', 'guide');
+    for (const [key, text] of rows) {
+      const r = el('div', 'guide-row');
+      r.append(key, el('span', '', text));
+      guide.append(r);
+    }
+    const goals = el('ul', 'goals');
+    for (const [b, t] of [
+      ['星光碎片', '散落在島上，碰到就會撿起來'],
+      ['祭壇', '用 3 片碎片點亮，點亮的祭壇之間可以互相傳送'],
+      ['上升氣流', '島嶼邊緣的閃爍光點，滑翔進去就能飛得更高'],
+      ['雲鯨', '在高空巡游，乘著牠腹下的氣流就能登上牠的背'],
+    ]) {
+      const li = el('li');
+      li.append(el('b', '', b), '：' + t);
+      goals.append(li);
+    }
+    const go = el('button', 'start-btn go-btn', '開始探索');
+    go.type = 'button';
+    go.addEventListener('click', () => {
+      this.closeModal();
+      toast('收集 3 片星光碎片，點亮島上的古老祭壇');
+    });
+    this.openModal(el('h2', '', '旅程指引'), el('p', 'sub', '歡迎來到雲端之上的群島'), guide, el('h3', '', '在這片天空裡'), goals, go);
   }
 
   // ----- emotes & pings -----
@@ -758,6 +813,15 @@ const BEARINGS = ['北', '東北', '東', '東南', '南', '西南', '西', '西
 function bearingName(dx, dz) {
   const a = Math.atan2(dx, -dz);
   return BEARINGS[(Math.round(a / (Math.PI / 4)) + 8) % 8];
+}
+
+// a key or button picture for the guide: an icon, a label, or a row of keycaps
+function keyCap(icon, label = '', round = false, keys = null) {
+  const k = el('span', 'guide-key' + (round ? ' round' : ''));
+  if (icon) k.innerHTML = iconSvg(icon);
+  if (keys) for (const key of keys) key === '–' ? k.append('–') : k.append(el('kbd', '', key));
+  if (label) k.append(label);
+  return k;
 }
 
 function fmtDist(d) {

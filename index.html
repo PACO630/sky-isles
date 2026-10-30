@@ -8,64 +8,71 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <title>雲海群島 Sky Isles</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M12 2.5 18.5 10 12 21.5 5.5 10Z' fill='%23ffd98a'/></svg>" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;700&display=swap" />
     <link rel="stylesheet" href="./src/style.css" />
   </head>
   <body>
     <canvas id="game"></canvas>
 
-    <div id="title" class="screen">
-      <div class="card">
-        <div class="logo" data-icon="shard"></div>
+    <div id="title" class="title-screen">
+      <div></div>
+      <header class="brand">
+        <div class="brand-mark" data-icon="shard"></div>
         <h1>雲海群島</h1>
-        <p class="sub">Sky Isles · 和朋友一起漫遊雲端之上的無盡群島</p>
-
-        <label class="field">
-          <span>旅人名字</span>
-          <input id="name" maxlength="12" autocomplete="off" placeholder="輸入你的名字" />
-        </label>
-
-        <div class="field">
-          <span>斗篷顏色</span>
-          <div id="swatches" class="swatches"></div>
-        </div>
-
-        <label class="field">
-          <span>世界代碼 <small>（相同代碼＝同一個世界，可多人一起玩）</small></span>
-          <div class="row">
-            <input id="world" maxlength="24" autocomplete="off" spellcheck="false" />
-            <button id="newWorld" class="ghost" type="button" title="產生新世界" data-icon="dice"></button>
+        <p class="brand-en">SKY ISLES</p>
+      </header>
+      <div class="menu">
+        <div class="fields">
+          <label class="line-field">
+            <span>旅人</span>
+            <input id="name" maxlength="12" autocomplete="off" placeholder="你的名字" />
+          </label>
+          <div class="line-field">
+            <span>斗篷</span>
+            <div id="swatches" class="swatches"></div>
           </div>
-        </label>
-
-        <button id="start" class="primary" type="button">開始旅程</button>
-        <p class="hint" id="controlsHint"></p>
+          <label class="line-field">
+            <span>世界</span>
+            <input id="world" maxlength="24" autocomplete="off" spellcheck="false" />
+            <button id="newWorld" class="icon-btn" type="button" title="產生新世界" data-icon="dice"></button>
+          </label>
+        </div>
+        <button id="start" class="start-btn" type="button">開始旅程</button>
       </div>
+      <footer class="title-foot">
+        <span>輸入相同的世界代碼，就能和朋友在同一片天空相遇</span>
+        <span>v0.4</span>
+      </footer>
     </div>
 
     <div id="hud" class="hidden">
-      <div class="panel stats">
+      <div class="stats">
         <span class="stat-shard" title="星光碎片"><i data-icon="shard"></i><b id="sShards">0</b></span>
         <span class="stat-island" title="已發現島嶼"><i data-icon="island"></i><b id="sIslands">0</b></span>
         <span class="stat-altar" title="已點亮祭壇"><i data-icon="altar"></i><b id="sAltars">0</b></span>
-        <button id="journalBtn" class="mini" type="button" title="旅人日誌 (J)" data-icon="book"></button>
       </div>
       <div id="compass" class="compass"><div id="compassStrip" class="compass-strip"></div><div class="compass-tick"></div></div>
-      <div class="panel room">
-        <div class="room-line">
-          <span id="netDot" class="dot"></span>
-          <span id="roomLabel"></span>
-          <span id="peerCount">· 1 人</span>
+      <div class="corner">
+        <button id="journalBtn" class="round-btn" type="button" title="旅人日誌 (J)" data-icon="book"></button>
+        <div class="social">
+          <button id="socialBtn" class="round-btn" type="button" title="朋友"><i data-icon="friends"></i><span id="peerBadge" class="badge hidden"></span></button>
+          <div id="socialPanel" class="social-panel hidden">
+            <div class="room-line">
+              <span id="netDot" class="dot"></span>
+              <span id="roomLabel"></span>
+              <span id="peerCount">1 人</span>
+            </div>
+            <button id="invite" class="pill-btn" type="button">邀請朋友</button>
+            <div class="panel-label">隊友</div>
+            <div id="friends" class="friends"></div>
+          </div>
         </div>
-        <div class="room-btns">
-          <button id="invite" type="button">邀請朋友</button>
-          <button id="friendsBtn" type="button">隊友</button>
-        </div>
-        <div id="friends" class="friends hidden"></div>
       </div>
       <div id="islandName" class="island-name"></div>
       <div id="toasts" class="toasts"></div>
       <div id="prompt" class="prompt hidden"></div>
-      <div id="help" class="help"></div>
       <div id="emotes" class="emotes">
         <button id="emoteToggle" class="emote-toggle" type="button" aria-label="表情" data-icon="smile"></button>
         <div id="emoteRow" class="emote-row"></div>
@@ -73,7 +80,7 @@
     </div>
 
     <div id="modal" class="modal hidden">
-      <div class="card modal-card">
+      <div class="modal-card">
         <button id="modalClose" class="modal-close" type="button" aria-label="關閉">✕</button>
         <div id="modalBody"></div>
       </div>
